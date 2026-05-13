@@ -5,7 +5,7 @@ import numpy as np
 RAY_SOURCE_DIST = 2
 RAY_ANGLE = np.pi/4
 BEAM_NUM = 5
-GRID_SIZE = 10
+GRID_SIZE = 2
 
 
 def ray_aa_bb(aa, bb, r_origin, r_dir): #expect shape (2,) np arrays, aa lower left corner bb upper right
@@ -54,31 +54,34 @@ def amanatides_and_woos_traversal(first_hit_coord, ray_dir, aa, bb):
     delta_t_x = delta_t[0]
     delta_t_y = delta_t[1]
 
-    num_pixels_till_coord = (first_hit_coord - aa)/pixel_length
-
-    current_grid_i = int(np.clip(GRID_SIZE-np.ceil(num_pixels_till_coord[1]), 0, GRID_SIZE-1)) #the grid i, j coordinate should be normal matrix indices. Upper left should be 0,0
-    current_grid_j = int(np.clip(np.floor(num_pixels_till_coord[0]), 0, GRID_SIZE-1)) #the np.clip is like fancy if checking whether the value is GRID_SIZE and subtracting one if not
-
-
     if step_x > 0:
-        upper_x_bound = aa[0] + (current_grid_j+1)*pixel_length
-        t_x = (upper_x_bound-first_hit_coord[0])/ray_dir[0]
-    elif step_x < 0:
-        lower_x_bound = aa[0]  + current_grid_j*pixel_length
-        t_x = (lower_x_bound-first_hit_coord[0])/ray_dir[0]
+        x_upper_bound = np.floor((first_hit_coord[0] + step_x*pixel_length-aa[0])/pixel_length)*pixel_length+aa[0]
+        t_x = (x_upper_bound - first_hit_coord[0])/ray_dir[0]
+
+        cur_grid_j = int(np.floor((first_hit_coord[0] - aa[0])/pixel_length))
+    elif step_x <0:
+        x_lower_bound = np.ceil((first_hit_coord[0] + step_x*pixel_length-aa[0])/pixel_length)*pixel_length+aa[0]
+        t_x = (x_lower_bound - first_hit_coord[0])/ray_dir[0]
+
+        cur_grid_j = int(np.ceil((first_hit_coord[0] - aa[0])/pixel_length-1))
     else:
         t_x = np.inf
+        cur_grid_j = int(np.floor((first_hit_coord[0] - aa[0])/pixel_length)) #just decide for one cell as the ray goes exactly between to cells in parallel
 
-    
+
     if step_y > 0:
-        upper_y_bound = bb[1] - current_grid_i*pixel_length
-        t_y = (upper_y_bound-first_hit_coord[1])/ray_dir[1]
+        y_upper_bound = np.floor((first_hit_coord[1] + step_y*pixel_length-aa[1])/pixel_length)*pixel_length+aa[1]
+        t_y = (y_upper_bound - first_hit_coord[1])/ray_dir[1]
+
+        cur_grid_i = int(GRID_SIZE-1 - np.floor((first_hit_coord[1] - aa[1])/pixel_length))
     elif step_y < 0:
-        lower_y_bound = bb[1] - (current_grid_i+1)*pixel_length    
-        t_y = (lower_y_bound-first_hit_coord[1])/ray_dir[1]
+        y_lower_bound = np.ceil((first_hit_coord[1] + step_y*pixel_length-aa[1])/pixel_length)*pixel_length+aa[1]
+        t_y = (y_lower_bound - first_hit_coord[1])/ray_dir[1]
+
+        cur_grid_i = int(GRID_SIZE - np.ceil((first_hit_coord[1] - aa[1])/pixel_length))
     else:
         t_y = np.inf
-
+        cur_grid_i = int(GRID_SIZE-1 - np.floor((first_hit_coord[1] - aa[1])/pixel_length))
     
     traversed_pixels = []
     
@@ -89,23 +92,34 @@ def amanatides_and_woos_traversal(first_hit_coord, ray_dir, aa, bb):
 
             len_in_cell = np.linalg.norm((t_x - prev_t)*ray_dir)
 
-            traversed_pixels.append(TraversedPixel(current_grid_i, current_grid_j, len_in_cell))
+            traversed_pixels.append(TraversedPixel(cur_grid_i, cur_grid_j, len_in_cell))
 
-            current_grid_j += step_x
+            cur_grid_j += step_x
 
-            if current_grid_j < 0 or current_grid_j >= GRID_SIZE:
+            if cur_grid_j < 0 or cur_grid_j >= GRID_SIZE:
                 break
 
             prev_t = t_x
             t_x += delta_t_x
             
+        elif t_x == t_y: #maybe also using np.is_close with tolerance
+
+            len_in_cell = np.linalg.norm((t_x - prev_t)*ray_dir)
+
+            traversed_pixels.append(TraversedPixel(cur_grid_i, cur_grid_j, len_in_cell))
+
+            cur_grid_j += step_x
+            cur_grid_i -= step_y
+
+            if cur_grid_i < 0 or cur_grid_i >= GRID_SIZE or cur_grid_j < 0 or cur_grid_j >= GRID_SIZE:
+                break
         else:
             len_in_cell = np.linalg.norm((t_y - prev_t)*ray_dir)
-            traversed_pixels.append(TraversedPixel(current_grid_i, current_grid_j, len_in_cell))
+            traversed_pixels.append(TraversedPixel(cur_grid_i, cur_grid_j, len_in_cell))
 
-            current_grid_i -= step_y
+            cur_grid_i -= step_y
 
-            if current_grid_i < 0 or current_grid_i >= GRID_SIZE:
+            if cur_grid_i < 0 or cur_grid_i >= GRID_SIZE:
                 break
 
             prev_t = t_y
