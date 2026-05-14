@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import List
 
 import numpy as np
 
@@ -43,7 +44,7 @@ class TraversedPixel:
     j: int
     length: float
 
-def amanatides_and_woos_traversal(first_hit_coord, ray_dir, aa, bb):
+def amanatides_and_woos_traversal(first_hit_coord, ray_dir, aa, bb) -> List[TraversedPixel]:
     step = np.sign(ray_dir)
     step_x = int(step[0])
     step_y = int(step[1])
@@ -127,7 +128,11 @@ def amanatides_and_woos_traversal(first_hit_coord, ray_dir, aa, bb):
     
     return traversed_pixels
 
-            
+
+def flatten_i_j(i, j):
+    ret = i*GRID_SIZE + j
+    return ret
+
 
 if __name__ == "__main__":
 
@@ -137,6 +142,10 @@ if __name__ == "__main__":
     aa = np.array([-0.5, -0.5])
     bb = np.array([0.5, 0.5])
 
+    lin_eq_holder = np.zeros((360*BEAM_NUM, GRID_SIZE**2))
+    b = np.zeros(360*BEAM_NUM)
+
+    i = 0
 
     for degree in range(360):
         ray_origin = np.array([np.cos(degree*np.pi/180)*RAY_SOURCE_DIST, np.sin(degree*np.pi/180)*RAY_SOURCE_DIST])
@@ -148,7 +157,7 @@ if __name__ == "__main__":
         perpendicular_direction = np.array([-base_direction[1], base_direction[0]])
         ray_directions = base_direction + ms[:, None] * perpendicular_direction #shape (BEAM_NUM, 2)
 
-        print(ray_directions)
+        #print(ray_directions)
 
         for ray_dir in ray_directions:
             t_entry, t_exit = ray_aa_bb(aa, bb, ray_origin, ray_dir)
@@ -156,10 +165,23 @@ if __name__ == "__main__":
             if t_entry == -np.inf:
                 continue
             
-            first_hit = ray_origin+t_entry*ray_dir
+            first_hit = np.clip(ray_origin+t_entry*ray_dir, -0.5, 0.5) #the clip ensures that floating point inaccuracies dont result in components like -0.5000...1 which would then result in out of bounds grid coords like i = GRID_SIZE
+            #maybe put clip in function for better testing
+
             traversed_pixels = amanatides_and_woos_traversal(first_hit, ray_dir, aa, bb)
-        
-        print(traversed_pixels)
+
+            out_ray_val = 0
+            for tp in traversed_pixels:
+                out_ray_val += grid[tp.i, tp.j]*tp.length
+                lin_eq_holder[i, flatten_i_j(tp.i, tp.j)] = tp.length
+                #todo grow the lin_eq_holder and b dynamically to not have zero lines if the ray doesnt hit the object
+
+            b[i] = out_ray_val
+            i += 1
+            print(i)
+    
+    print(lin_eq_holder)
+    print(b)
 
 
 

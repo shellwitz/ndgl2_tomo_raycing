@@ -186,6 +186,23 @@ class AmanatidesAndWooTraversalTests(unittest.TestCase):
             expected_lengths=[math.sqrt(0.26), math.sqrt(0.26)],
         )
 
+#todo take the actual not cutoff values for i=682 in main -> the amanatides_and_woos_traversal works if the first_hit_coord is np.clip before
+    def test_near_corner_entry_stays_in_grid(self):
+        first_hit_coord = np.array([-0.46625754, -0.5])
+        direction = np.array([1.36399672, 1.4627074])
+
+        actual = amanatides_and_woos_traversal(first_hit_coord, direction, AA, BB)
+
+        assert_traversal(
+            self,
+            actual,
+            expected_cells=[(1, 0), (1, 1), (0, 1)],
+            expected_lengths=[
+                0.6836637252734603,
+                5.9506995924434355e-09,
+                0.6836637312241599,
+            ],
+        )
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    unittest.main()
