@@ -142,10 +142,8 @@ if __name__ == "__main__":
     aa = np.array([-0.5, -0.5])
     bb = np.array([0.5, 0.5])
 
-    lin_eq_holder = np.zeros((360*BEAM_NUM, GRID_SIZE**2))
-    b = np.zeros(360*BEAM_NUM)
-
-    i = 0
+    lin_eq_rows = []
+    rhs_b = []
 
     for degree in range(360):
         ray_origin = np.array([np.cos(degree*np.pi/180)*RAY_SOURCE_DIST, np.sin(degree*np.pi/180)*RAY_SOURCE_DIST])
@@ -170,18 +168,24 @@ if __name__ == "__main__":
 
             traversed_pixels = amanatides_and_woos_traversal(first_hit, ray_dir, aa, bb)
 
+            row = np.zeros(GRID_SIZE**2)
+
             out_ray_val = 0
             for tp in traversed_pixels:
                 out_ray_val += grid[tp.i, tp.j]*tp.length
-                lin_eq_holder[i, flatten_i_j(tp.i, tp.j)] = tp.length
-                #todo grow the lin_eq_holder and b dynamically to not have zero lines if the ray doesnt hit the object
-
-            b[i] = out_ray_val
-            i += 1
-            print(i)
+                row[flatten_i_j(tp.i, tp.j)] = tp.length
+                
+            lin_eq_rows.append(row)
+            rhs_b.append(out_ray_val)
     
+    lin_eq_holder = np.asarray(lin_eq_rows)
+    b = np.asarray(rhs_b)
+
     print(lin_eq_holder)
     print(b)
+
+    print(lin_eq_holder.shape)
+    print(b.shape)
 
 
 
