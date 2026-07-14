@@ -155,7 +155,9 @@ def flatten_i_j(i, j):
 
 SMOOTH_GRID = False
 def make_reverse_problem(grid, type="TSVD"):
-    noise = np.random.normal(MU, SIGMA, 100000)
+    noise = []
+    for i in range(10):
+        noise.append(np.random.normal(MU, SIGMA, 100000))
     def ret(alpha):
         flattened_grid_densities = np.ravel(grid)
 
@@ -209,11 +211,13 @@ def make_reverse_problem(grid, type="TSVD"):
         # print(b.shape)
 
 
-        noisy_b = b +noise[:len(b)]
-        if type == "tsvd":
-            densities = tsvd(lin_eq_holder, noisy_b, alpha=alpha)
-        else:
-            densities = tikhonov(lin_eq_holder, noisy_b, alpha=alpha)
+        densities = []
+        for i in range(len(noise)):
+            noisy_b = b +noise[i][:len(b)]
+            if type == "tsvd":
+                densities.append(tsvd(lin_eq_holder, noisy_b, alpha=alpha))
+            else:
+                densities.append(tikhonov(lin_eq_holder, noisy_b, alpha=alpha))
         return densities
     
     return ret
@@ -251,7 +255,9 @@ def tune():
         dist=0
         for i in range(len(problems)):
             solutions.append(problems[i](alpha))
-            dist+=np.linalg.norm(matrices[i].flat-solutions[-1])**2
+            for j in range(len(solutions[-1])):
+                dist+=np.linalg.norm(matrices[i].flat-solutions[j][-1])**2
+                
         print(f"{exponent_alpha} --> {dist}")
         return dist
     alpha_exponent_optimal = minimize(f, -3)
